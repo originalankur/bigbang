@@ -1,0 +1,121 @@
+version: '2.2'
+
+services:
+  mongo:
+    container_name: mongo
+    image: mongo
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: django
+      MONGO_INITDB_ROOT_PASSWORD: djangopassword
+    volumes:
+      - '~/mongo_data:/data/db' 
+    ports:
+      - 27017:27017
+    command: mongod --storageEngine wiredTiger
+  mysql:
+    image: 'mysql:5.7'
+    volumes:
+       - '~/mysql_database:/var/lib/mysql'
+       - ./init.sql:/data/application/init.sql
+    command: --init-file /data/application/init.sql
+    restart: 'always'
+    expose:
+      - '3306'
+    ports:
+      - '3306:3306'
+    environment:
+       MYSQL_ROOT_PASSWORD: 'webapppass'
+       MYSQL_DATABASE: 'db'
+       MYSQL_USER: 'webapp'
+       MYSQL_PASSWORD: 'webapppass'
+    healthcheck:
+      test: "exit 0"
+  webserver:
+    container_name: webserver
+    build: ./nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./webapp/static/:/static
+      - ./nginx/my-site.com.crt:/etc/nginx/my-site.com.crt # New Line!
+      - ./nginx/my-site.com.key:/etc/nginx/my-site.com.key # New Line!
+    working_dir: /etc/nginx
+    links:
+      - webapp
+  webapp:
+    container_name: webapp
+    build: ./webapp
+    working_dir: /src
+    ports:
+      - '8888:8888'
+      - "443:443" # Docker open external port 443 and redirect all traffic to internal port 443
+    expose:
+      - '8888'
+      - '443'
+    depends_on:
+      mysql:
+        condition: service_healthy
+  redis:
+    container_name: redis
+    ports:
+      - 6379:6379
+    image: redis:alpine
+    command: redis-server --appendonly yes
+    volumes:
+     - '~/redisdata:/data'
+  elasticsearch:
+    build:
+      context: elasticsearch/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      ES_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+  logstash:
+    build:
+      context: logstash/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      - ./logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5000:5000"
+      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+  kibana:
+    build:
+      context: kibana/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      - ./kibana/config/:/usr/share/kibana/config:ro
+    ports:
+      - "5601:5601"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+  reverse-proxy:
+    image: traefik # The official Traefik docker image
+    command: --api --docker # Enables the web UI and tells Traefik to listen to docker
+    ports:
+      - "80:80"     # The HTTP port
+      - "8080:8080" # The Web UI (enabled by --api)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock # So that Traefik can listen to the Docker events
+networks:
+  elk:
+    driver: bridge
