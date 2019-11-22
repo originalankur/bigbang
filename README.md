@@ -2,8 +2,8 @@
 BigBang is an opinionated boilerplate for and by ankur gupta used for development of software applications.
 
 **Software Stack**
-- Orchestration and Deployment
-  - Kubernetes and Docker
+- Deployment
+  - Docker
 
 - Operating System
   - Ubuntu ( Minimal Ubuntu 18.04 LTS )
@@ -17,11 +17,8 @@ BigBang is an opinionated boilerplate for and by ankur gupta used for developmen
   - Elasticsearch
   - Druid
 
-- Message Queue
-  - Kafka 
-
-- Machine Learning
-  - Apache Spark
+- Caching and Message Queue
+  - Redis (Streams for queues)
 
 - Load balancer and Webserver
   - nginx
