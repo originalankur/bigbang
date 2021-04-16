@@ -11,7 +11,7 @@ django-allauth==0.39.1
 django-appconf==1.0.3
 django-compat==1.0.15
 django-compressor==2.2
-django-debug-toolbar==1.11
+django-debug-toolbar==1.11.1
 django-devserver==0.8.0
 django-environ==0.4.5
 django-hijack==2.1.10
